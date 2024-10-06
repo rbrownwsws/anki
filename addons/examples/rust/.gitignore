@@ -1,0 +1,6 @@
+
+# Build outputs
+target/
+
+# Generated bindings
+src/bindings.rs

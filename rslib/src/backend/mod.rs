@@ -28,6 +28,7 @@ use reqwest::Client;
 use tokio::runtime;
 use tokio::runtime::Runtime;
 
+use crate::addon::AddonHost;
 use crate::backend::dbproxy::db_command_bytes;
 use crate::backend::sync::SyncState;
 use crate::prelude::*;
@@ -58,6 +59,7 @@ pub struct BackendInner {
     backup_task: Mutex<Option<JoinHandle<Result<()>>>>,
     media_sync_task: Mutex<Option<JoinHandle<Result<()>>>>,
     web_client: Mutex<Option<Client>>,
+    addon_host: Arc<Mutex<AddonHost>>,
 }
 
 #[derive(Default)]
@@ -79,6 +81,8 @@ pub fn init_backend(init_msg: &[u8]) -> result::Result<Backend, String> {
 
 impl Backend {
     pub fn new(tr: I18n, server: bool) -> Backend {
+        let addon_host = AddonHost::new().expect("failed to create addon host");
+
         Backend(Arc::new(BackendInner {
             col: Mutex::new(None),
             tr,
@@ -93,6 +97,7 @@ impl Backend {
             backup_task: Mutex::new(None),
             media_sync_task: Mutex::new(None),
             web_client: Mutex::new(None),
+            addon_host: Arc::new(Mutex::new(addon_host)),
         }))
     }
 

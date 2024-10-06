@@ -1,0 +1,19 @@
+interface notes {
+    type timestamp-secs = s64;
+    type usn = s32;
+
+    type note-type-id = s64;
+
+    type note-id = s64;
+    record note {
+        id: note-id,
+        guid: string,
+        note-type-id: note-type-id,
+        mtime: timestamp-secs,
+        usn: usn,
+        tags: list<string>,
+        fields: list<string>,
+        sort-field: option<string>,
+        checksum: option<u32>,
+    }
+}

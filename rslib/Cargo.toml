@@ -104,6 +104,7 @@ unic-ucd-category.workspace = true
 unicase.workspace = true
 unicode-normalization.workspace = true
 utime.workspace = true
+wasmtime.workspace = true
 zip.workspace = true
 zstd.workspace = true
 

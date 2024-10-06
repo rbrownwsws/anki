@@ -1,10 +1,10 @@
 // Copyright: Ankitects Pty Ltd and contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
+use std::path::PathBuf;
 use std::sync::MutexGuard;
-
 use anki_proto::generic;
-use tracing::error;
+use tracing::{error};
 
 use super::Backend;
 use crate::collection::CollectionBuilder;
@@ -15,14 +15,42 @@ use crate::storage::SchemaVersion;
 
 impl BackendCollectionService for Backend {
     fn open_collection(&self, input: anki_proto::collection::OpenCollectionRequest) -> Result<()> {
+        // Find the addons directory
+        let mut addons_dir_path = PathBuf::from(&input.collection_path);
+        addons_dir_path.pop();
+        addons_dir_path.push("addons");
+
+        // Find addon files
+        let addon_paths = std::fs::read_dir(&addons_dir_path)?
+            // Get rid of entries we do not have permission to read etc.
+            .filter_map(|x| x.ok())
+            // Convert entries to paths
+            .map(|x| x.path())
+            // Filter out files that have the extension "wasm"
+            .filter(|x| x.is_file() && x.extension().is_some_and(|extension| extension == "wasm"));
+
+        let mut addon_host = self.addon_host.lock().expect("failed to obtain lock on addon_host");
+
+        // Unload old addons
+        addon_host.unload_all();
+
+        // Load the addon files
+        for path in addon_paths {
+            println!("Loading addon at: {:?}", path);
+            let addon_bytes = std::fs::read(path)?;
+
+            addon_host.load(addon_bytes).expect("failed to load addon");
+        }
+
         let mut guard = self.lock_closed_collection()?;
 
-        let mut builder = CollectionBuilder::new(input.collection_path);
+        let mut builder = CollectionBuilder::new(&input.collection_path);
         builder
             .set_media_paths(input.media_folder_path, input.media_db_path)
             .set_server(self.server)
             .set_tr(self.tr.clone())
-            .set_shared_progress_state(self.progress_state.clone());
+            .set_shared_progress_state(self.progress_state.clone())
+            .set_addon_host(self.addon_host.clone());
 
         *guard = Some(builder.build()?);
 

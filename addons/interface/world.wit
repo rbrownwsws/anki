@@ -1,0 +1,21 @@
+package anki:addon;
+
+// The interface that the addon host implements (Anki rustlib)
+interface host {
+	log: func(message: string);
+}
+
+// The interface that the addon guest implements (addon code)
+interface guest {
+    use decks.{deck-id};
+    use notes.{note};
+
+    hello-guest: func();
+
+    before-add-note: func(note: note, did: deck-id) -> option<note>;
+}
+
+world addon {
+	import host;
+    export guest;
+}

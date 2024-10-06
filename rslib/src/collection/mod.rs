@@ -16,7 +16,7 @@ use std::sync::Mutex;
 
 use anki_i18n::I18n;
 use anki_io::create_dir_all;
-
+use crate::addon::AddonHost;
 use crate::browser_table;
 use crate::decks::Deck;
 use crate::decks::DeckId;
@@ -41,6 +41,8 @@ pub struct CollectionBuilder {
     tr: Option<I18n>,
     check_integrity: bool,
     progress_handler: Option<Arc<Mutex<ProgressState>>>,
+
+    addon_host: Option<Arc<Mutex<AddonHost>>>,
 }
 
 impl CollectionBuilder {
@@ -62,6 +64,9 @@ impl CollectionBuilder {
         let media_folder = self.media_folder.clone().unwrap_or_default();
         let media_db = self.media_db.clone().unwrap_or_default();
         let storage = SqliteStorage::open_or_create(&col_path, &tr, server, self.check_integrity)?;
+        
+        let addon_host = self.addon_host.as_ref().map(|value| value.clone());
+        
         let col = Collection {
             storage,
             col_path,
@@ -73,6 +78,8 @@ impl CollectionBuilder {
                 progress: self.progress_handler.clone().unwrap_or_default(),
                 ..Default::default()
             },
+
+            addon_host,
         };
 
         Ok(col)
@@ -121,6 +128,11 @@ impl CollectionBuilder {
         self.progress_handler = Some(state);
         self
     }
+
+    pub fn set_addon_host(&mut self, addon_host: Arc<Mutex<AddonHost>>) -> &mut Self {
+        self.addon_host = Some(addon_host);
+        self
+    }
 }
 
 #[derive(Debug, Default)]
@@ -148,6 +160,8 @@ pub struct Collection {
     pub(crate) tr: I18n,
     pub(crate) server: bool,
     pub(crate) state: CollectionState,
+
+    pub(crate) addon_host: Option<Arc<Mutex<AddonHost>>>
 }
 
 impl Debug for Collection {

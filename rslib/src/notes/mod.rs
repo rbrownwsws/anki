@@ -356,6 +356,12 @@ impl Collection {
     }
 
     pub(crate) fn add_note_inner(&mut self, note: &mut Note, did: DeckId) -> Result<()> {
+        if let Some(addon_host) = &self.addon_host {
+            let mut addon_host = addon_host.lock().unwrap();
+
+            addon_host.event_before_add_note(note, did);
+        }
+        
         let nt = self
             .get_notetype(note.notetype_id)?
             .or_invalid("missing note type")?;

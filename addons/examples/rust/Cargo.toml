@@ -1,0 +1,30 @@
+# N.B. We need this empty section to mark we do not want to be part of the
+#      parent workspace.
+[workspace]
+
+[package]
+name = "example-addon"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wit-bindgen-rt = { version = "0.33.0", features = ["bitflags"] }
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+codegen-units = 1
+opt-level = "s"
+debug = false
+strip = true
+lto = true
+
+[package.metadata.component]
+package = "anki:example"
+
+[package.metadata.component.target]
+path = "../../interface"
+world = "addon"
+
+[package.metadata.component.dependencies]
