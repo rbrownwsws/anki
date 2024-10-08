@@ -54,7 +54,7 @@ directly twiddling with the database, monkey patching etc.
 
 ### `./interface/...`
 
-These files define the interface of WebAssemby Anki addons.
+These files define the interface of WebAssembly Anki addons.
 
 They can be used to generate bindings in your preferred language.
 
@@ -63,7 +63,7 @@ They can be used to generate bindings in your preferred language.
 
 These are example addons using the WebAssembly interface.
 
-## How do try out this experiment?
+## How do I try out this experiment?
 
 1. Create a new Anki profile (to make sure we do not mess up your real one).
 

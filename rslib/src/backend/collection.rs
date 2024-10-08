@@ -3,8 +3,9 @@
 
 use std::path::PathBuf;
 use std::sync::MutexGuard;
+
 use anki_proto::generic;
-use tracing::{error};
+use tracing::error;
 
 use super::Backend;
 use crate::collection::CollectionBuilder;

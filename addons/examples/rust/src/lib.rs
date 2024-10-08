@@ -1,10 +1,8 @@
 #[allow(warnings)]
 mod bindings;
 
-use bindings::exports::anki::addon::guest::Guest;
-
 use bindings::anki::addon::host::log;
-use crate::bindings::exports::anki::addon::guest::{DeckId, Note};
+use bindings::exports::anki::addon::guest::{Guest, DeckId, Note};
 
 struct Component;
 

@@ -2,7 +2,7 @@ package anki:addon;
 
 // The interface that the addon host implements (Anki rustlib)
 interface host {
-	log: func(message: string);
+    log: func(message: string);
 }
 
 // The interface that the addon guest implements (addon code)
@@ -16,6 +16,6 @@ interface guest {
 }
 
 world addon {
-	import host;
+    import host;
     export guest;
 }

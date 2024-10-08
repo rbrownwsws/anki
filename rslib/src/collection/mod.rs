@@ -16,6 +16,7 @@ use std::sync::Mutex;
 
 use anki_i18n::I18n;
 use anki_io::create_dir_all;
+
 use crate::addon::AddonHost;
 use crate::browser_table;
 use crate::decks::Deck;
