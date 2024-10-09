@@ -10,8 +10,21 @@ interface guest {
     use decks.{deck-id};
     use notes.{note};
 
-    hello-guest: func();
+    record addon-manifest {
+        // The name of the addon
+        name: string,
 
+        // Requested entries in the Tools menu (list of labels)
+        tool-menu-entries: list<string>,
+    }
+
+    // This will be called after the addon host has loaded the addon
+    init: func() -> addon-manifest;
+
+    // GUI Callbacks
+    on-tool-menu-entry-clicked: func(idx: u32);
+
+    // Hooks
     before-add-note: func(note: note, did: deck-id) -> option<note>;
 }
 

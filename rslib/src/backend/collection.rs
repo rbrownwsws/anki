@@ -16,36 +16,9 @@ use crate::storage::SchemaVersion;
 
 impl BackendCollectionService for Backend {
     fn open_collection(&self, input: anki_proto::collection::OpenCollectionRequest) -> Result<()> {
-        // Find the addons directory
-        let mut addons_dir_path = PathBuf::from(&input.collection_path);
-        addons_dir_path.pop();
-        addons_dir_path.push("addons");
-
-        // Find addon files
-        let addon_paths = std::fs::read_dir(&addons_dir_path)?
-            // Get rid of entries we do not have permission to read etc.
-            .filter_map(|x| x.ok())
-            // Convert entries to paths
-            .map(|x| x.path())
-            // Filter out files that have the extension "wasm"
-            .filter(|x| x.is_file() && x.extension().is_some_and(|extension| extension == "wasm"));
-
-        let mut addon_host = self.addon_host.lock().expect("failed to obtain lock on addon_host");
-
-        // Unload old addons
-        addon_host.unload_all();
-
-        // Load the addon files
-        for path in addon_paths {
-            println!("Loading addon at: {:?}", path);
-            let addon_bytes = std::fs::read(path)?;
-
-            addon_host.load(addon_bytes).expect("failed to load addon");
-        }
-
         let mut guard = self.lock_closed_collection()?;
 
-        let mut builder = CollectionBuilder::new(&input.collection_path);
+        let mut builder = CollectionBuilder::new(input.collection_path);
         builder
             .set_media_paths(input.media_folder_path, input.media_db_path)
             .set_server(self.server)
@@ -118,6 +91,65 @@ impl BackendCollectionService for Backend {
 
     fn set_wants_abort(&self) -> Result<()> {
         self.progress_state.lock().unwrap().want_abort = true;
+        Ok(())
+    }
+
+    fn init_addons(&self, request: anki_proto::collection::InitAddonsRequest) -> Result<()> {
+        // Find the addons directory
+        let addons_dir_path = PathBuf::from(request.addons_path);
+        
+        println!("addons_dir_path: {:?}", addons_dir_path);
+
+        // Find addon files
+        let addon_paths = std::fs::read_dir(&addons_dir_path)?
+            // Get rid of entries we do not have permission to read etc.
+            .filter_map(|x| x.ok())
+            // Convert entries to paths
+            .map(|x| x.path())
+            // Filter out files that have the extension "wasm"
+            .filter(|x| x.is_file() && x.extension().is_some_and(|extension| extension == "wasm"));
+
+        let mut addon_host = self.addon_host.lock().expect("failed to obtain lock on addon_host");
+
+        // Unload old addons
+        addon_host.unload_all();
+
+        // Load the addon files
+        for path in addon_paths {
+            println!("Loading addon at: {:?}", path);
+            let addon_bytes = std::fs::read(path)?;
+
+            addon_host.load(addon_bytes).expect("failed to load addon");
+        }
+        
+        Ok(())
+    }
+
+    fn get_addon_tool_menus_entries(&self) -> Result<anki_proto::collection::AddonToolMenus> {
+        let addon_host = self.addon_host.lock().expect("failed to obtain lock on addon_host");
+        
+        let mut entries = vec![];
+        
+        for entry in addon_host.get_all_tool_menu_entries() {
+            entries.push(anki_proto::collection::AddonToolMenuEntry {
+                menu_id: Some(anki_proto::collection::AddonMenuId {
+                    addon_id: entry.addon_id,
+                    menu_idx: entry.menu_idx,
+                }),
+                label: entry.label,
+            });
+        }
+        
+        Ok(anki_proto::collection::AddonToolMenus {
+            entries
+        })
+    }
+
+    fn on_click_addon_menu(&self, request: anki_proto::collection::AddonMenuId) -> Result<()> {
+        let mut addon_host = self.addon_host.lock().expect("failed to obtain lock on addon_host");
+        
+        addon_host.on_tool_menu_entry_clicked(request.addon_id, request.menu_idx);
+        
         Ok(())
     }
 }

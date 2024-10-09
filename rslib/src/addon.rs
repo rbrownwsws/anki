@@ -76,10 +76,17 @@ impl bindings::anki::addon::notes::Host for AddonHostState {
 
 }
 
+pub struct AddonMenuEntry {
+    pub addon_id: u32,
+    pub menu_idx: u32,
+    pub label: String,
+}
+
 /// Everything we need to interact with an instance of an addon.
 pub struct AddonContext {
     store: Store<AddonHostState>,
     instance: Addon,
+    menu_entries: Vec<String>,
 }
 
 /// Manages interaction with Wasm Addons.
@@ -113,13 +120,14 @@ impl AddonHost {
         let mut store = Store::new(&self.engine, AddonHostState::new());
         let instance = Addon::instantiate(&mut store, &component, &linker)?;
 
-        // Call a Guest method on the addon
-        instance.anki_addon_guest().call_hello_guest(&mut store)?;
+        // Initialise the addon
+        let manifest = instance.anki_addon_guest().call_init(&mut store).unwrap();
 
         // Store the addon instance for later
         let context = AddonContext {
             store,
             instance,
+            menu_entries: manifest.tool_menu_entries,
         };
         self.addons.push(context);
 
@@ -129,6 +137,30 @@ impl AddonHost {
     /// Get rid of all loaded addons
     pub fn unload_all(&mut self) {
         self.addons.clear();
+    }
+
+    pub fn get_all_tool_menu_entries(&self) -> Vec<AddonMenuEntry> {
+        let mut entries = Vec::new();
+
+        for (addon_id, addon_context) in self.addons.iter().enumerate() {
+            for (menu_idx, label) in addon_context.menu_entries.iter().enumerate() {
+                entries.push(AddonMenuEntry {
+                    addon_id: addon_id as u32,
+                    menu_idx: menu_idx as u32,
+                    label: label.clone(),
+                });
+            }
+        }
+
+        entries
+    }
+    
+    pub fn on_tool_menu_entry_clicked(&mut self, addon_id: u32, menu_id: u32) {
+        let addon_context = self.addons.get_mut(addon_id as usize).unwrap();
+        
+        addon_context.instance.anki_addon_guest()
+            .call_on_tool_menu_entry_clicked(&mut addon_context.store, menu_id)
+            .unwrap();
     }
 
     pub fn event_before_add_note(&mut self, note: &mut Note, did: DeckId) {

@@ -113,9 +113,9 @@ These are example addons using the WebAssembly interface.
    [snip]
    ```
 
-7. Try adding a new note and marvel at my amazing addon!
+7. Marvel at my amazing addon!
 
-   e.g. If you add a note like this:
+   Try adding a note e.g.:
 
    ```
    Front: hello
@@ -135,3 +135,10 @@ These are example addons using the WebAssembly interface.
    Front: hello [Hello from a Wasm addon!]
     Back: world [Hello from a Wasm addon!]
    ```
+
+   Next have a look at the Tools menu, you should see two new options:
+
+   - `Say Hello`
+   - `Say Goodbye`
+
+   If you click these you should get some more messages in the terminal

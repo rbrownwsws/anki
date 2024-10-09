@@ -36,6 +36,28 @@ service BackendCollectionService {
   rpc AwaitBackupCompletion(generic.Empty) returns (generic.Empty);
   rpc LatestProgress(generic.Empty) returns (Progress);
   rpc SetWantsAbort(generic.Empty) returns (generic.Empty);
+
+  rpc InitAddons(InitAddonsRequest) returns (generic.Empty);
+  rpc GetAddonToolMenusEntries(generic.Empty) returns (AddonToolMenus);
+  rpc OnClickAddonMenu(AddonMenuId) returns (generic.Empty);
+}
+
+message InitAddonsRequest {
+  string addons_path = 1;
+}
+
+message AddonMenuId {
+  uint32 addon_id = 1;
+  uint32 menu_idx = 2;
+}
+
+message AddonToolMenuEntry {
+  AddonMenuId menu_id = 1;
+  string label = 2;
+}
+
+message AddonToolMenus {
+  repeated AddonToolMenuEntry entries = 1;
 }
 
 message OpenCollectionRequest {

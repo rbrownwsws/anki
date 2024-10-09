@@ -94,6 +94,7 @@ from aqt.utils import (
     tr,
 )
 from aqt.webview import AnkiWebView, AnkiWebViewKind
+from anki.collection_pb2 import AddonMenuId, InitAddonsRequest
 
 install_pylib_legacy()
 
@@ -193,6 +194,9 @@ class AnkiQt(QMainWindow):
         self.app = app
         self.pm = profileManager
         self.fullscreen = False
+
+        self.addon_menu_actions: list[QAction] = []
+
         # init rest of app
         self.safeMode = (
             bool(self.app.queryKeyboardModifiers() & Qt.KeyboardModifier.ShiftModifier)
@@ -504,6 +508,29 @@ class AnkiQt(QMainWindow):
     def loadProfile(self, onsuccess: Callable | None = None) -> None:
         if not self.loadCollection():
             return
+
+        self.backend.init_addons(os.path.join(self.pm.profileFolder(), "addons"))
+
+        # Clear old addon menu actions
+        for action in self.addon_menu_actions:
+            self.form.menuTools.removeAction(action)
+
+        self.addon_menu_actions.clear()
+
+        # Add new addon menu actions
+        for entry in self.backend.get_addon_tool_menus_entries():
+            def gen_callback(addon_id, menu_idx):
+                def callback():
+                    self.backend.on_click_addon_menu(AddonMenuId(addon_id=addon_id, menu_idx=menu_idx))
+                return callback
+
+            # Create the tools menu entry
+            action = QAction(entry.label, self)
+            qconnect(action.triggered, gen_callback(entry.menu_id.addon_id, entry.menu_id.menu_idx))
+            self.form.menuTools.addAction(action)
+
+            # Save the action for later so we can remove it
+            self.addon_menu_actions.append(action)
 
         self.setup_sound()
         self.flags = FlagManager(self)
