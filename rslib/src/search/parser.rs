@@ -315,14 +315,18 @@ fn quoted_term_str(s: &str) -> IResult<&str> {
     }
 }
 
+fn colon_separated_term(s: &str) -> IResult<&str> {
+    verify(escaped(is_not(r":\"), '\\', anychar), |t: &str| {
+        !t.is_empty()
+    })(s)
+}
+
 /// Determine if text is a qualified search, and handle escaped chars.
 /// Expect well-formed input: unempty and no trailing \.
 fn search_node_for_text(s: &str) -> ParseResult<SearchNode> {
     // leading : is only possible error for well-formed input
-    let (tail, head) = verify(escaped(is_not(r":\"), '\\', anychar), |t: &str| {
-        !t.is_empty()
-    })(s)
-    .map_err(|_: nom::Err<ParseError>| parse_failure(s, FailKind::MissingKey))?;
+    let (tail, head) = colon_separated_term(s)
+        .map_err(|_: nom::Err<ParseError>| parse_failure(s, FailKind::MissingKey))?;
     if tail.is_empty() {
         Ok(SearchNode::UnqualifiedText(unescape(head)?))
     } else {
@@ -358,6 +362,7 @@ fn search_node_for_text_with_argument<'a>(
         "dupe" => parse_dupe(val)?,
         "has-cd" => SearchNode::CustomData(unescape(val)?),
         "preset" => SearchNode::Preset(val.into()),
+        "field" => parse_explicit_field(val)?,
         // anything else is a field search
         _ => parse_single_field(key, val)?,
     })
@@ -657,6 +662,17 @@ fn parse_dupe(s: &str) -> ParseResult<SearchNode> {
     }
 }
 
+/// e.g. field:field_name:search_text
+fn parse_explicit_field(val: &str) -> ParseResult<SearchNode> {
+    // Val is something like "field_name:search_text"
+
+    // TODO: Give me my own FailKind?
+    let (rest, field_name) = colon_separated_term(val)
+        .map_err(|_: nom::Err<ParseError>| parse_failure(val, FailKind::MissingKey))?;
+
+    parse_single_field(field_name, &rest[1..])
+}
+
 fn parse_single_field<'a>(key: &'a str, val: &'a str) -> ParseResult<'a, SearchNode> {
     Ok(if let Some(stripped) = val.strip_prefix("re:") {
         SearchNode::SingleField {
@@ -815,17 +831,47 @@ mod test {
             })]
         );
 
+        // Explicit fields
+        assert_eq!(
+            parse("field:foo:bar")?,
+            vec![Search(SingleField {
+                field: "foo".into(),
+                text: "bar".into(),
+                is_re: false
+            })]
+        );
+
+        // Explicit fields with regex
+        assert_eq!(
+            parse("field:foo:re:bar")?,
+            vec![Search(SingleField {
+                field: "foo".into(),
+                text: "bar".into(),
+                is_re: true
+            })]
+        );
+
+        // Explicit fields that are shadowed by other search terms
+        assert_eq!(
+            parse("field:note:bar")?,
+            vec![Search(SingleField {
+                field: "note".into(),
+                text: "bar".into(),
+                is_re: false
+            })]
+        );
+
         // escaping is independent of quotation
         assert_eq!(
-            parse(r#""field:va\"lue""#)?,
+            parse(r#""foo:va\"lue""#)?,
             vec![Search(SingleField {
-                field: "field".into(),
+                field: "foo".into(),
                 text: "va\"lue".into(),
                 is_re: false
             })]
         );
-        assert_eq!(parse(r#""field:va\"lue""#)?, parse(r#"field:"va\"lue""#)?,);
-        assert_eq!(parse(r#""field:va\"lue""#)?, parse(r#"field:va\"lue"#)?,);
+        assert_eq!(parse(r#""foo:va\"lue""#)?, parse(r#"foo:"va\"lue""#)?,);
+        assert_eq!(parse(r#""foo:va\"lue""#)?, parse(r#"foo:va\"lue"#)?,);
 
         // parser unescapes ":()-
         assert_eq!(
@@ -843,9 +889,9 @@ mod test {
         assert_eq!(parse(r#""\)\(""#), parse(r#"")(""#));
 
         // escaping : is optional if it is preceded by another :
-        assert_eq!(parse("field:val:ue"), parse(r"field:val\:ue"));
-        assert_eq!(parse(r#""field:val:ue""#), parse(r"field:val\:ue"));
-        assert_eq!(parse(r#"field:"val:ue""#), parse(r"field:val\:ue"));
+        assert_eq!(parse("foo:val:ue"), parse(r"foo:val\:ue"));
+        assert_eq!(parse(r#""foo:val:ue""#), parse(r"foo:val\:ue"));
+        assert_eq!(parse(r#"foo:"val:ue""#), parse(r"foo:val\:ue"));
 
         // escaping - is optional if it cannot be mistaken for a negator
         assert_eq!(parse("-"), parse(r"\-"));
