@@ -130,7 +130,7 @@ fn write_regexable(subject: RegexableTerm, search: &str, is_re: bool) -> String 
 
             format!("field:{}", escaped_field_name)
         }
-        RegexableTerm::Tag => "tag:".to_owned(),
+        RegexableTerm::Tag => "tag".to_owned(),
     };
     let re = if is_re { "re:" } else { "" };
     let text = if !is_re && search.starts_with("re:") {
